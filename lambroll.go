@@ -227,6 +227,34 @@ func (app *App) AWSAccountID(ctx context.Context) string {
 	return app.callerIdentity.Account(ctx)
 }
 
+func (app *App) JsonnetVM() *jsonnet.VM {
+	vm := jsonnet.MakeVM()
+	if app == nil {
+		for _, f := range DefaultJsonnetNativeFuncs() {
+			vm.NativeFunction(f)
+		}
+		return vm
+	}
+	for _, f := range app.nativeFuncs {
+		vm.NativeFunction(f)
+	}
+	for k, v := range app.extStr {
+		vm.ExtVar(k, v)
+	}
+	for k, v := range app.extCode {
+		vm.ExtCode(k, v)
+	}
+	return vm
+}
+
+func (app *App) ConfigLoader() *config.Loader {
+	if app != nil {
+		return app.loader
+	} else {
+		return config.New()
+	}
+}
+
 func loadDefinitionFile[T any](app *App, path string, defaults []string) (*T, error) {
 	if path == "" {
 		p, err := findDefinitionFile("", defaults)
@@ -245,42 +273,18 @@ func loadDefinitionFile[T any](app *App, path string, defaults []string) (*T, er
 	)
 	switch filepath.Ext(path) {
 	case ".jsonnet":
-		vm := jsonnet.MakeVM()
-		if app != nil {
-			for _, f := range app.nativeFuncs {
-				vm.NativeFunction(f)
-			}
-			for k, v := range app.extStr {
-				vm.ExtVar(k, v)
-			}
-			for k, v := range app.extCode {
-				vm.ExtCode(k, v)
-			}
-		}
-		jsonStr, err := vm.EvaluateFile(path)
+		jsonStr, err := app.JsonnetVM().EvaluateFile(path)
 		if err != nil {
 			return nil, err
 		}
-		if app != nil {
-			src, err = app.loader.ReadWithEnvBytes([]byte(jsonStr))
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			// no app, just return jsonnet result
-			src = []byte(jsonStr)
+		src, err = app.ConfigLoader().ReadWithEnvBytes([]byte(jsonStr))
+		if err != nil {
+			return nil, err
 		}
 	default:
-		if app != nil {
-			src, err = app.loader.ReadWithEnv(path)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			src, err = os.ReadFile(path)
-			if err != nil {
-				return nil, err
-			}
+		src, err = app.ConfigLoader().ReadWithEnv(path)
+		if err != nil {
+			return nil, err
 		}
 	}
 	var v T
