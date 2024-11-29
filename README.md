@@ -212,7 +212,7 @@ See the above usage for the environment variable names.
 
 `lambroll.json` or `lambroll.jsonnet` can be used as an option file.
 
-If the option file is found in the current directory, lambroll reads the file and applies the options.
+If the option file is found in the current directory, lambroll reads the file and applies to the default values of global flags.
 
 ```jsonnet
 {
@@ -237,7 +237,8 @@ If the option file is found in the current directory, lambroll reads the file an
 ```
 
 All fields are optional. If the field is not defined, the default value is used.
-When passed by command line options, the command line option takes precedence over the option file.
+
+When command-line flags are specified, they take precedence over the options file.
 
 ### Init
 
