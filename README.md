@@ -216,21 +216,21 @@ If the option file is found in the current directory, lambroll reads the file an
 
 ```jsonnet
 {
-  logLevel: 'info',
+  log_level: 'info',
   color: true,
   region: 'ap-northeast-1',
   profile: 'default',
   tfstate: 's3://my-bucket/terraform.tfstate',
-  prefixedTfstate: {
+  prefixed_tfstate: {
     my_first_: 's3://my-bucket/first.tfstate',
     my_second_: 's3://my-bucket/second.tfstate',
   },
   endpoint: 'http://localhost:9001',
   envfile: ['.env1', '.env2'],
-  extStr: {
+  ext_str: {
     accountID: '0123456789012',
   },
-  extCode: {
+  ext_code: {
     memorySize: '128 * 4',
   },
 }
