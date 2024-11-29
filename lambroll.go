@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"reflect"
 	"text/template"
 	"time"
 
@@ -53,6 +54,9 @@ func (app *App) functionArn(ctx context.Context, name string) string {
 }
 
 var (
+	// DefaultLogLevel is default log level
+	DefaultLogLevel = "info"
+
 	// IgnoreFilename defines file name includes ignore patterns at creating zip archive.
 	IgnoreFilename = ".lambdaignore"
 
@@ -62,9 +66,16 @@ var (
 		"function.jsonnet",
 	}
 
+	// DefaultFunctionURLFilenames defines file name for function URL definition.
 	DefaultFunctionURLFilenames = []string{
 		"function_url.json",
 		"function_url.jsonnet",
+	}
+
+	// DefaultOptionFilenames defines file name for option definition.
+	DefaultOptionFilenames = []string{
+		"lambroll.json",
+		"lambroll.jsonnet",
 	}
 
 	// FunctionZipFilename defines file name for zip archive downloaded at init.
@@ -77,6 +88,8 @@ var (
 		DefaultFunctionFilenames[1],
 		DefaultFunctionURLFilenames[0],
 		DefaultFunctionURLFilenames[1],
+		DefaultOptionFilenames[0],
+		DefaultOptionFilenames[1],
 		FunctionZipFilename,
 		".git/*",
 		".terraform/*",
@@ -222,6 +235,9 @@ func loadDefinitionFile[T any](app *App, path string, defaults []string) (*T, er
 		}
 		path = p
 	}
+	var instance T
+	typeName := reflect.TypeOf(instance).Name()
+	log.Printf("[info] loading %s from %s", typeName, path)
 
 	var (
 		src []byte
@@ -230,27 +246,41 @@ func loadDefinitionFile[T any](app *App, path string, defaults []string) (*T, er
 	switch filepath.Ext(path) {
 	case ".jsonnet":
 		vm := jsonnet.MakeVM()
-		for _, f := range app.nativeFuncs {
-			vm.NativeFunction(f)
-		}
-		for k, v := range app.extStr {
-			vm.ExtVar(k, v)
-		}
-		for k, v := range app.extCode {
-			vm.ExtCode(k, v)
+		if app != nil {
+			for _, f := range app.nativeFuncs {
+				vm.NativeFunction(f)
+			}
+			for k, v := range app.extStr {
+				vm.ExtVar(k, v)
+			}
+			for k, v := range app.extCode {
+				vm.ExtCode(k, v)
+			}
 		}
 		jsonStr, err := vm.EvaluateFile(path)
 		if err != nil {
 			return nil, err
 		}
-		src, err = app.loader.ReadWithEnvBytes([]byte(jsonStr))
-		if err != nil {
-			return nil, err
+		if app != nil {
+			src, err = app.loader.ReadWithEnvBytes([]byte(jsonStr))
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			// no app, just return jsonnet result
+			src = []byte(jsonStr)
 		}
 	default:
-		src, err = app.loader.ReadWithEnv(path)
-		if err != nil {
-			return nil, err
+		if app != nil {
+			src, err = app.loader.ReadWithEnv(path)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			src, err = os.ReadFile(path)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 	var v T
