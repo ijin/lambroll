@@ -237,8 +237,9 @@ If the option file is found in the current directory, lambroll reads the file an
 ```
 
 All fields are optional. If the field is not defined, the default value is used.
-
 When command-line flags are specified, they take precedence over the options file.
+
+While parsing the option file, lambroll evaluates only the `{{env}}` and `{{must_env}}` template functions and `env` and `must_env` native functions in Jsonnet. Other functions are not available.
 
 ### Init
 
